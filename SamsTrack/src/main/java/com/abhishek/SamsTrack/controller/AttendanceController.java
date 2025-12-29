@@ -5,12 +5,15 @@ import java.util.List;
 import java.util.Set;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.abhishek.SamsTrack.dto.AttendanceRecordRequest;
@@ -19,6 +22,7 @@ import com.abhishek.SamsTrack.entity.AttendanceRecord;
 import com.abhishek.SamsTrack.entity.Student;
 import com.abhishek.SamsTrack.entity.Subject;
 import com.abhishek.SamsTrack.entity.User;
+import com.abhishek.SamsTrack.report.AttendancePdfReportService;
 import com.abhishek.SamsTrack.service.AttendanceRecordService;
 import com.abhishek.SamsTrack.service.StudentService;
 import com.abhishek.SamsTrack.service.SubjectService;
@@ -37,6 +41,28 @@ public class AttendanceController {
 	private SubjectService subjectService;
 	@Autowired
 	private StudentService studentService;
+
+	@Autowired
+	private AttendancePdfReportService attendancePdfReportService;
+
+	@GetMapping(value = "/report/pdf", produces = MediaType.APPLICATION_PDF_VALUE)
+	public ResponseEntity<byte[]> downloadAttendancePdf(@RequestParam(required = false) String faculty,
+			@RequestParam(required = false) Long subjectId, @RequestParam(required = false) String date) {
+
+		List<AttendanceRecord> records;
+
+		// 🔹 Same filters as UI
+		if (faculty != null && subjectId != null && date != null) {
+			records = attendanceRecordService.getAttendanceByFacultySubjectDate(faculty, subjectId, date);
+		} else {
+			records = attendanceRecordService.getAllAttendanceRecords();
+		}
+
+		byte[] pdf = attendancePdfReportService.generateAttendanceReport(records);
+
+		return ResponseEntity.ok().header("Content-Disposition", "attachment; filename=attendance-report.pdf")
+				.contentType(MediaType.APPLICATION_PDF).body(pdf);
+	}
 
 	@GetMapping("/all")
 	public List<AttendanceRecord> getAllAttendanceRecords() {
